@@ -1,0 +1,60 @@
+package com.yulong.android.ui.place
+
+import android.os.Bundle
+import android.text.Editable
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Toast
+import androidx.core.widget.addTextChangedListener
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProviders
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.yulong.android.R
+import kotlinx.android.synthetic.main.fragment_place.*
+
+class PlaceFragment : Fragment() {
+
+    val viewModel by lazy { ViewModelProviders.of(this).get(PlaceViewModel::class.java) }
+
+    private lateinit var adapter: PlaceAdapter
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        return inflater.inflate(R.layout.fragment_place, container, false)
+    }
+
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        super.onActivityCreated(savedInstanceState)
+        val linearLayoutManager = LinearLayoutManager(activity)
+        recyclerView.layoutManager = linearLayoutManager
+        adapter = PlaceAdapter(this, viewModel.placeLists)
+        recyclerView.adapter = adapter
+        searchPlaceEdit.addTextChangedListener { text: Editable? ->
+            val content = text.toString()
+            if (content.isNotEmpty()) {
+                viewModel.searchPlaces(content)
+            } else {
+                recyclerView.visibility = View.GONE
+                bgImageView.visibility = View.VISIBLE
+                viewModel.placeLists.clear()
+                adapter.notifyDataSetChanged()
+            }
+        }
+
+        viewModel.placeLiveData.observe(this as LifecycleOwner, Observer{ result ->
+            val places = result.getOrNull()
+            if (places != null) {
+                recyclerView.visibility = View.VISIBLE
+                bgImageView.visibility = View.GONE
+                viewModel.placeLists.clear()
+                viewModel.placeLists.addAll(places)
+                adapter.notifyDataSetChanged()
+            } else {
+                Toast.makeText(activity, "未能查询到任何地点", Toast.LENGTH_SHORT).show()
+                result.exceptionOrNull()?.printStackTrace()
+            }
+        })
+    }
+}
